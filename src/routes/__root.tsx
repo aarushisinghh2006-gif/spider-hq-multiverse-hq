@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { useGame } from "../lib/game/store";
 
 function NotFoundComponent() {
   return (
@@ -76,15 +77,28 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no",
+      },
+      { title: "Spider HQ: Multiverse Mission Control" },
+      {
+        name: "description",
+        content:
+          "Comic-book mission control hub with six hero microgames — earn XP, coins, ranks and rebuild your headquarters.",
+      },
+      { name: "author", content: "Spider HQ" },
+      { name: "theme-color", content: "#101430" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { property: "og:title", content: "Spider HQ: Multiverse Mission Control" },
+      {
+        property: "og:description",
+        content:
+          "Six hero microgames, XP, ranks, daily challenges and a headquarters to rebuild.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
@@ -92,6 +106,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Bangers&family=Rajdhani:wght@400;500;600;700&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,
@@ -117,10 +139,25 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  useEffect(() => {
+    void import("../lib/pwa").then((m) => m.setupPWA());
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
+      <ThemeApplier />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
     </QueryClientProvider>
   );
+}
+
+function ThemeApplier() {
+  const theme = useGame((s) => s.theme);
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove("theme-symbiote", "theme-gold", "theme-stealth");
+    if (theme !== "classic") root.classList.add(`theme-${theme}`);
+  }, [theme]);
+  return null;
 }
