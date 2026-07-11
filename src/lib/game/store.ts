@@ -131,7 +131,7 @@ export const useGame = create<GameStore>()(
     {
       name: "spider-hq-save",
       storage: createJSONStorage(() =>
-        typeof window === "undefined" ? (noopStorage as Storage) : window.localStorage,
+        typeof window === "undefined" ? (noopStorage as unknown as Storage) : window.localStorage,
       ),
     },
   ),
