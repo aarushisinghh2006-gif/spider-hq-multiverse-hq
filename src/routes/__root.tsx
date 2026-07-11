@@ -95,10 +95,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         property: "og:description",
         content:
-          "Six hero microgames, XP, ranks, daily challenges and a headquarters to rebuild.",
+          "Comic-book mission control hub with six hero microgames — earn XP, coins, ranks and rebuild your headquarters.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Spider HQ: Multiverse Mission Control" },
+      { name: "twitter:description", content: "Comic-book mission control hub with six hero microgames — earn XP, coins, ranks and rebuild your headquarters." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/340a6621-2d73-49ea-8730-0384bc6fd426" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/340a6621-2d73-49ea-8730-0384bc6fd426" },
     ],
     links: [
       {
