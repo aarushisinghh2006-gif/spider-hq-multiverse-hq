@@ -1,14 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Check, LogOut, Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import BottomNav from "@/components/BottomNav";
 import HQStatus from "@/components/HQStatus";
 import LoadingScreen from "@/components/LoadingScreen";
+import LoginScreen from "@/components/LoginScreen";
 import MuteButton from "@/components/MuteButton";
 import PlayerCard from "@/components/PlayerCard";
+import SeasonTimer from "@/components/SeasonTimer";
 import { GAMES, dailyGame, todayKey } from "@/lib/game/games";
 import { buzz } from "@/lib/game/haptics";
 import { sfx } from "@/lib/game/sound";
 import { useGame } from "@/lib/game/store";
+import { useMounted } from "@/lib/game/useMounted";
 
 // No og:image here: hosting injects the project's social preview at serve time.
 export const Route = createFileRoute("/")({
@@ -17,6 +21,8 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const [ready, setReady] = useState(false);
+  const mounted = useMounted();
+  const signedIn = useGame((s) => s.signedIn);
 
   useEffect(() => {
     const seen = sessionStorage.getItem("spider-hq-booted");
@@ -30,7 +36,8 @@ function Index() {
     return () => clearTimeout(t);
   }, []);
 
-  if (!ready) return <LoadingScreen />;
+  if (!ready || !mounted) return <LoadingScreen />;
+  if (!signedIn) return <LoginScreen />;
 
   return (
     <div className="mx-auto max-w-md p-4 pb-24 pt-[max(1rem,env(safe-area-inset-top))]">
@@ -55,8 +62,14 @@ function Index() {
         <MuteButton />
       </header>
 
+      <NameBar />
+
       <div className="animate-slide-up" style={{ animationDelay: "60ms" }}>
         <PlayerCard />
+      </div>
+
+      <div className="mt-3">
+        <SeasonTimer />
       </div>
 
       <DailyBanner />
@@ -74,6 +87,74 @@ function Index() {
     </div>
   );
 }
+
+function NameBar() {
+  const name = useGame((s) => s.name);
+  const setName = useGame((s) => s.setName);
+  const logout = useGame((s) => s.logout);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(name);
+
+  return (
+    <div className="mb-3 flex items-center gap-2 rounded-xl border-2 border-border bg-card p-2.5 animate-slide-up">
+      <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+        Playing as
+      </span>
+      {editing ? (
+        <>
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            maxLength={18}
+            autoFocus
+            aria-label="Player name"
+            className="min-w-0 flex-1 rounded-lg border-2 border-accent bg-secondary px-2.5 py-1 font-display text-lg tracking-wide text-foreground outline-none"
+          />
+          <button
+            aria-label="Save name"
+            onClick={() => {
+              setName(draft);
+              setEditing(false);
+              sfx("unlock");
+              buzz(15);
+            }}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-success bg-success/20 text-success"
+          >
+            <Check className="h-4 w-4" />
+          </button>
+        </>
+      ) : (
+        <>
+          <span className="min-w-0 flex-1 truncate font-display text-lg tracking-wide text-foreground">
+            {name}
+          </span>
+          <button
+            aria-label="Edit name"
+            onClick={() => {
+              setDraft(name);
+              setEditing(true);
+              sfx("tap");
+            }}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-border bg-secondary text-foreground"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            aria-label="Sign out"
+            onClick={() => {
+              sfx("tap");
+              logout();
+            }}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-border bg-secondary text-muted-foreground"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 
 function DailyBanner() {
   const lastDaily = useGame((s) => s.lastDaily);
