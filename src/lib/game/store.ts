@@ -9,6 +9,13 @@ export interface RunEntry {
   date: string;
 }
 
+export interface RosterEntry {
+  name: string;
+  points: number;
+  missions: number;
+  updated: number;
+}
+
 export interface MissionResult {
   score: number;
   xpGain: number;
@@ -22,6 +29,8 @@ export interface MissionResult {
 
 interface GameStore {
   name: string;
+  signedIn: boolean;
+  roster: RosterEntry[];
   xp: number;
   coins: number;
   coinsEarned: number;
@@ -34,6 +43,8 @@ interface GameStore {
   achievements: string[];
   lastDaily: string;
   runs: RunEntry[];
+  login: (name: string) => void;
+  logout: () => void;
   setName: (name: string) => void;
   toggleMute: () => void;
   setTheme: (id: string) => void;
@@ -47,10 +58,32 @@ const noopStorage = {
   removeItem: () => undefined,
 };
 
+/** Season = one UTC day. When it ends, the top scorer is crowned champion. */
+export function seasonEnd(): number {
+  const d = new Date();
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1, 0, 0, 0);
+}
+
+function cleanName(name: string) {
+  return name.trim().slice(0, 18);
+}
+
+function upsert(roster: RosterEntry[], name: string, patch: Partial<RosterEntry>): RosterEntry[] {
+  const idx = roster.findIndex((r) => r.name.toLowerCase() === name.toLowerCase());
+  const base: RosterEntry = roster[idx] ?? { name, points: 0, missions: 0, updated: Date.now() };
+  const next = { ...base, ...patch, name, updated: Date.now() };
+  const copy = [...roster];
+  if (idx >= 0) copy[idx] = next;
+  else copy.push(next);
+  return copy;
+}
+
 export const useGame = create<GameStore>()(
   persist(
     (set, get) => ({
       name: "Web-Slinger",
+      signedIn: false,
+      roster: [],
       xp: 0,
       coins: 0,
       coinsEarned: 0,
@@ -64,7 +97,25 @@ export const useGame = create<GameStore>()(
       lastDaily: "",
       runs: [],
 
-      setName: (name) => set({ name: name.slice(0, 18) || "Web-Slinger" }),
+      login: (raw) => {
+        const name = cleanName(raw) || "Web-Slinger";
+        set((s) => ({ name, signedIn: true, roster: upsert(s.roster, name, {}) }));
+      },
+      logout: () => set({ signedIn: false }),
+      setName: (raw) => {
+        const name = cleanName(raw) || "Web-Slinger";
+        set((s) => {
+          const old = s.roster.find((r) => r.name.toLowerCase() === s.name.toLowerCase());
+          const roster = s.roster.filter((r) => r.name.toLowerCase() !== s.name.toLowerCase());
+          return {
+            name,
+            roster: upsert(roster, name, {
+              points: old?.points ?? 0,
+              missions: old?.missions ?? 0,
+            }),
+          };
+        });
+      },
       toggleMute: () => set((s) => ({ muted: !s.muted })),
       setTheme: (id) => {
         if (get().unlockedThemes.includes(id)) set({ theme: id });
@@ -95,6 +146,7 @@ export const useGame = create<GameStore>()(
         const newBest = score > (best[game] ?? 0);
         if (newBest) best[game] = score;
 
+        const mine = s.roster.find((r) => r.name.toLowerCase() === s.name.toLowerCase());
         const next = {
           xp: s.xp + xpGain,
           coins: s.coins + coinGain,
@@ -104,6 +156,10 @@ export const useGame = create<GameStore>()(
           plays: { ...s.plays, [game]: (s.plays[game] ?? 0) + 1 },
           lastDaily: isDaily ? today : s.lastDaily,
           runs: [...s.runs, { game, score, date: today }].slice(-120),
+          roster: upsert(s.roster, s.name, {
+            points: (mine?.points ?? 0) + score * mult,
+            missions: (mine?.missions ?? 0) + 1,
+          }),
         };
 
         const snapshot = { ...s, ...next };
